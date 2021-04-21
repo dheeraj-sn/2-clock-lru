@@ -1,0 +1,15 @@
+# depslib dependency file v1.0
+1618989743 source:d:\code\codeblocks\buddy_simulator_2\main.cpp
+	<stdio.h>
+	<malloc.h>
+	<string.h>
+	<stdlib.h>
+	<stdbool.h>
+	<iostream>
+	<list>
+	<utility>
+	<map>
+	<vector>
+	<math.h>
+	<set>
+
