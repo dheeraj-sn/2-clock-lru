@@ -12,43 +12,52 @@
 #include<set>
 using namespace std;
 
+// structure for each LRU node
+// It stores seqno, num and the allocated frame_number
 struct lru_node{
 	int seqno;
     int num;
     int frame_number;
 };
 
+// Doubly linked list for active list
 list<lru_node>active;
+
+// Doubly linked list for inactive list
 list<lru_node>inactive;
+
+// Pool of free memory frames
 set<int>free_memory;
+
+//Hash table for tracking seqno, num and allocated frame number => {seqno, {num, frame_number}}
 map<int,vector<pair<int,int> > >mem_map;
 
+// Function to print the free memory frames
 void print_free_memory(){
-    cout<<"Free frames : "<<endl;
     for(auto it:free_memory)
         cout<<it<<" ";
     cout<<endl;
 }
 
+// Function to print the active list
 void print_active(){
-    cout<<"Active list : "<<endl;
     for(auto it:active){
         cout<<"{"<<"seqno:"<<it.seqno<<", num: "<<it.num<<", frame_no: "<<it.frame_number<<"} "<<endl;
-        //cout<<"{"<<it.seqno<<","<<it.num<<","<<it.frame_number<<"} ";
     }
-    cout<<endl;
+    //cout<<endl;
 }
 
+// Function to print the inactive list
 void print_inactive(){
-    cout<<"Inactive list : "<<endl;
     for(auto it:inactive){
         cout<<"{"<<"seqno:"<<it.seqno<<" ,num: "<<it.num<<", frame_no: "<<it.frame_number<<"} "<<endl;
-        //cout<<"{"<<it.seqno<<","<<it.num<<","<<it.frame_number<<"} ";
     }
-    cout<<endl;
+    //cout<<endl;
 }
 
-void view_memory(){
+// Function to print the hash table which keeps track of seqno, num and allocated frame_number
+// {seqno, {num, frame_number}}
+void view_memory_map(){
     map<int,vector<pair<int,int> > >::iterator it;
     for(it=mem_map.begin();it!=mem_map.end();it++){
         cout<<it->first<<" -> ";
@@ -60,159 +69,234 @@ void view_memory(){
     }
 }
 
-int remove_from_inactive(){
+// Function for removing a node from the tail of inactive list
+void remove_from_inactive(){
     if(inactive.empty()){
-        //cout<<"No frames in inactive list"<<endl;
-        return 0;
+        //If the inactive list is empty, return
+        return ;
     }
     else{
+        // Get the seqno, num and frame_number of the tail node in inactive list
 		int seqno_current = inactive.back().seqno;
 		int num_current = inactive.back().num;
 		int frame_number_current = inactive.back().frame_number;
+
+        // Find the tail node in the hash_table[seqno]
 		for(int i=0;i<mem_map[seqno_current].size();i++){
+            // Find the "num" page in "seqno"
 			if(mem_map[seqno_current][i].first == num_current){
+			    // Add the frame_number allocated to page "seqno, num" to the free memory frame pool
 				free_memory.insert(mem_map[seqno_current][i].second);
-				//cout<<"Remove from mem_map : "<<seqno_current<<" "<<(mem_map[seqno_current].begin() + i)->first<<" "<<(mem_map[seqno_current].begin() + i)->second<<endl;
+				// Remove the page "seqno, num" from the hashtable
 				mem_map[seqno_current].erase(mem_map[seqno_current].begin() + i);
 				break;
 			}
 		}
-		//cout<<"Remove from inactive : "<<inactive.back().seqno<<" "<<inactive.back().num<<" "<<inactive.back().frame_number<<endl;
+		// Remove node from the tail of inactive list
         inactive.pop_back();
     }
-    return 1;
 }
 
-int add_to_inactive(lru_node newNode){
+// Function to add a node to the head of inactive list
+void add_to_inactive(lru_node newNode){
+    // Check if inactive list is full
     if(inactive.size()>=250){
+        // If inactive list is full, call function to remove a node from the tail of the list
         remove_from_inactive();
     }
+    // Push the new node(seqno, num, frame_number) to the head of the inactive list
     inactive.push_front(newNode);
-    //cout<<"Add to inactive : "<<inactive.front().seqno<<" "<<inactive.front().num<<" "<<inactive.front().frame_number<<endl;
-    return 1;
 }
 
-int remove_from_active(){
-    //cout<<"Remove from active : "<<active.back().seqno<<" "<<active.back().num<<" "<<active.back().frame_number<<endl;
+// Function to remove a node from the tail of active list and add to head of inactive list
+void remove_from_active(){
+    // Add the tail node of active list to inactive list
     add_to_inactive(active.back());
+
+    // Remove the tail node of active list
     active.pop_back();
-    return 1;
 }
 
-int add_to_active(lru_node newNode){
+// Function to add a node(seqno, num, frame_number) to head of active list
+void add_to_active(lru_node newNode){
+    // Check if active list is full
     if(active.size()>=250){
+        // If active list is full, remove a node from the tail of active list and insert into the inactive list
         remove_from_active();
     }
+
+    // Push the new node(seqno, num, frame_number) to the head of active list
     active.push_front(newNode);
-    //cout<<"Add to active : "<<active.front().seqno<<" "<<active.front().num<<" "<<active.front().frame_number<<endl;
-    return 1;
 }
 
-int reclaim(int number_of_frames){
-    //cout<<"Mem size before reclaimation : "<<free_memory.size()<<endl;
-    //cout<<"Try reclaim from inactive"<<endl;;
+// Function to reclaim allocated frames. It takes the number of frames required to be reclaimed as input
+void reclaim(int number_of_frames){
+
+    // Start removing nodes from the tail of inactive list
+    // Keep removing frames till either the number of required frames have been reclaimed or the inactive list is empty
     while(number_of_frames!=0 && !inactive.empty()){
         remove_from_inactive();
         number_of_frames--;
     }
+
+    // If the required number of frames have been reclaimed then return
     if(number_of_frames==0){
-        //cout<<"Mem size after reclaim from inactive: "<<free_memory.size()<<endl;
-        return 1;
+        return;
     }
-    //cout<<"Try reclaim from active"<<endl;
+
+    // If required number of frames have not been reclaimed from the inactive list, start removing nodes from tail of active list
+    // Keep removing frames till either the number of required frames have been reclaimed or the active list is empty
     while(number_of_frames!=0 && !active.empty()){
         remove_from_active();
         remove_from_inactive();
         number_of_frames--;
     }
-    //cout<<"Mem size after reclaimation : "<<free_memory.size()<<endl;
-    return 1;
+    return ;
 }
 ///////////////////////////////////////////////////////////////////
 
-
+// Function to initialize the memory pool
+// For our requirement there is a memory of 2MB, i.e. 512 frames
 void init(int pages){
 	for(int i=0;i<pages;i++){
 		free_memory.insert(i);
 	}
 }
 
-
+// Function to allocate "num" number of frames for sequence number "seqno"
 void allocate_pages(int seqno,int num){
-    //cout<<"Memsize before allocate : "<<free_memory.size()<<endl;
-	if(mem_map.find(seqno)==mem_map.end())
+    // Check if the "seqno" is already present in hash_table
+	if(mem_map.find(seqno)==mem_map.end()){
+		// If "seqno" is not present in hash_table, add a empty vector corresponding to "seqno" in hash_table
 		mem_map[seqno]=vector<pair<int,int> >();
-	if(num > free_memory.size()){
-		int pages_required = num - free_memory.size();
-		//cout<<"Try to reclaim "<<pages_required<<" pages."<<endl;
-		reclaim(pages_required);
 	}
+	// Check if required number of frames are present in the memory pool
+	if(num > free_memory.size()){
+        // If required number of frames are not present, check the number of frames that need to be reclaimed for the allocation
+		int frames_required = num - free_memory.size();
+
+		// Reclaim the required number of frames
+		reclaim(frames_required);
+	}
+
+    // Allocate "num" number of frames for sequence number "seqno"
 	for(int i=0;i<num;i++){
+        // Get frame number of free frame
 		int get_page = *free_memory.begin();
+
+        // Remove the free frame from the memory pool
 		free_memory.erase(free_memory.begin());
+
+		// Add (seqno, {num, frame_number}) to hash_table
 		mem_map[seqno].push_back({i,get_page});
+
+		// Prepare the new node for adding to inactive list
 		lru_node newNode;
         newNode.seqno = seqno;
         newNode.num = i;
         newNode.frame_number = get_page;
+
+        //  Add the new node {seqno, num, frame_number} to head of inactive list
         add_to_inactive(newNode);
 	}
-	//cout<<"Memsize after allocate : "<<free_memory.size()<<endl;
 }
 
-int allocate_one_page(int seqno, int num){
-    //cout<<"Memsize before allocate 1 page : "<<free_memory.size()<<endl;
-	if(mem_map.find(seqno)==mem_map.end())
+// Function to allocate a single frame for "seqno" and "num"
+int allocate_one_frame(int seqno, int num){
+    // Check if the "seqno" is already present in hash_table
+	if(mem_map.find(seqno)==mem_map.end()){
+        // If "seqno" is not present in hash_table, add a empty vector corresponding to "seqno" in hash_table
 		mem_map[seqno]=vector<pair<int,int> >();
-    for(int i=0;i<mem_map[seqno].size();i++){
-        if(mem_map[seqno][i].first==num)
-            return 0;
-    }
-	if(num > free_memory.size()){
-		int pages_required = num - free_memory.size();
-		reclaim(pages_required);
 	}
+
+    /*
+	// Check if frame is already allocated for "seqno, num"
+    for(int i=0;i<mem_map[seqno].size();i++){
+        if(mem_map[seqno][i].first==num){
+            // If frame is already allocated return
+            return -1;
+        }
+    }
+    */
+
+    // Check if required number of frames are present in the memory pool
+	if(num > free_memory.size()){
+        // If required number of frames are not present, check the number of frames that need to be reclaimed for the allocation
+		int frames_required = num - free_memory.size();
+        // Reclaim the required number of frames
+		reclaim(frames_required);
+	}
+
+	// Get frame number of free frame
 	int get_page = *free_memory.begin();
+
+	// Remove the free frame from the memory pool
 	free_memory.erase(free_memory.begin());
+
+	// Add (seqno, {num, frame_number}) to hash_table
 	mem_map[seqno].push_back({num,get_page});
+
+	// Prepare the new node for adding to inactive list
 	lru_node newNode;
     newNode.seqno = seqno;
     newNode.num = num;
     newNode.frame_number = get_page;
+
+    //  Add the new node {seqno, num, frame_number} to head of inactive list
     add_to_inactive(newNode);
-	//cout<<"Memsize after allocate 1 page : "<<free_memory.size()<<endl;
+
+    // Return the allocated frame number
 	return get_page;
 }
 
+// Function to access page with "seqno, num"
 void access_page(int seqno,int num){
 	int found=false;
 	list<lru_node>::iterator ait;
+
+	// Check if allocated frame is present in active list
 	for(ait=active.begin();ait!=active.end();ait++){
 		if(ait->seqno == seqno && ait->num==num){
-            //cout<<"Found seqno = "<<ait->seqno<<", num = "<<ait->num<<", frame_number = "<<ait->frame_number<<", in active list."<<endl;
+            // If allocated frame is present in active list, nothing needs to be done, return
 			return;
 		}
 	}
 
 	list<lru_node>::iterator iait;
+	// Earlier if frame was not present in active list, flow will reach here
+	// Check if frame is present in inactive list
 	for(iait=inactive.begin();iait!=inactive.end();iait++){
 		if(iait->seqno == seqno && iait->num==num){
-            //cout<<"Found seqno = "<<iait->seqno<<", num = "<<iait->num<<", frame_number = "<<iait->frame_number<<", in inactive list."<<endl;
+            // If frame is present in inactive list it should be added to active list
+
+            // Prepare node for adding to active list
 			lru_node newNode;
 			newNode.seqno = iait->seqno;
 			newNode.num = iait->num;
 			newNode.frame_number = iait->frame_number;
+
+			// Add prepared node to active list
 			add_to_active(newNode);
+
+			// Remove node from inactive list
 			inactive.erase(iait);
 			return;
 		}
 	}
+
+	// Flow will reach here if the frame is not present in either active or inactive list
+	// This means that frame has not been allocated for this "seqno, num" of it has been reclaimed
 	int allocated_frame_number = -1;
+	// Check if "seqno" is present int our hash_table
 	if(mem_map.find(seqno)==mem_map.end()){
+        // If seqno is not present in hash_table then add a empty vector corresponding to seqno in hash_table
 		mem_map[seqno]=vector<pair<int,int> >();
-        allocated_frame_number = allocate_one_page(seqno, num);
+        // Allocate a frame for "seqno, num" and add to inactive list
+        allocated_frame_number = allocate_one_frame(seqno, num);
         return;
 	}
+
+	// Check if frame is already allocated for "seqno, num"
 	bool found_in_seq=false;
 	for(int i=0;i<mem_map[seqno].size();i++){
 		if(mem_map[seqno][i].first == num){
@@ -221,52 +305,65 @@ void access_page(int seqno,int num){
 			break;
 		}
 	}
+
+	// If frame is not allocated for "seqno, num" then allocate a new frame for it and add to inactive list
 	if(found_in_seq==false){
-        allocated_frame_number = allocate_one_page(seqno, num);
+        allocated_frame_number = allocate_one_frame(seqno, num);
         return;
 	}
+	/*
 	lru_node newNode;
     newNode.seqno = seqno;
     newNode.num = num;
     newNode.frame_number = allocated_frame_number;
     add_to_inactive(newNode);
+    */
 }
 
+// Free the frame for "seqno, num"
 void free_page(int seqno, int num){
-    //cout<<"Memsize before free : "<<free_memory.size()<<endl;
 	bool found = false;
-	if(mem_map.find(seqno)==mem_map.end())
+	// Check if seqno is present in hash_table
+	if(mem_map.find(seqno)==mem_map.end()){
+		// If seqno is not present in hash_table then there are no frame allocated corresponding to it, so return
 		return;
+	}
+
+	// Check if frame is present for "seqno, num" in our hash_table
 	for(int i=0;i<mem_map[seqno].size();i++){
 		if(mem_map[seqno][i].first == num){
+            // If frame is present for "seqno, num" then reclaim the frame and add it to pool of free memory
 			free_memory.insert(mem_map[seqno][i].second);
+            // Remove the node for {seqno, {num,frame_numer}} from hash_table
 			mem_map[seqno].erase(mem_map[seqno].begin() + i);
 			found=true;
-			//cout<<"Freed seqno = "<<seqno<<", num = "<<num<<endl;
 			break;
 		}
 	}
-	//if(found){
+	// If frame was found in the hash_table check the active list and inactive list
+	if(found){
 		list<lru_node>::iterator ait;
+		// Check if {seqno, num, frame_numer} is present in active list
 		for(ait=active.begin();ait!=active.end();ait++){
 			if(ait->seqno == seqno && ait->num==num){
-                //cout<<"Found seqno = "<<ait->seqno<<", num = "<<ait->num<<", frame_number = "<<ait->frame_number<<", in active list for free."<<endl;
+                // Remove from active list
 				active.erase(ait);
 				break;
 			}
 		}
 		list<lru_node>::iterator iait;
+		// Check if {seqno, num, frame_numer} is present in inactive list
 		for(iait=inactive.begin();iait!=inactive.end();iait++){
 			if(iait->seqno == seqno && iait->num==num){
-                //cout<<"Found seqno = "<<iait->seqno<<", num = "<<iait->num<<", frame_number = "<<iait->frame_number<<", in inactive list for free."<<endl;
+                // Remove from inactive list
 				inactive.erase(iait);
 				break;
 			}
 		}
-	//}
-	//cout<<"Memsize after free : "<<free_memory.size()<<endl;
+	}
 }
 
+// Function to find the power of 2 just below a given number
 int power_two(int n)
 {
     int res = 0;
@@ -281,6 +378,7 @@ int power_two(int n)
     return res;
 }
 
+// Function to make buddy lists from free frames
 void make_buddy_list(){
     map<int,vector<vector<int> > >mp;
     mp[1] = vector<vector<int> >();
@@ -292,12 +390,16 @@ void make_buddy_list(){
     mp[64] = vector<vector<int> >();
     mp[128] = vector<vector<int> >();
     mp[256] = vector<vector<int> >();
+    mp[512] = vector<vector<int> >();
     vector<int>free_temp;
     set<int>::iterator it;
+
+    // Get list of all free frames from the memory pool
     for(it=free_memory.begin();it!=free_memory.end();it++){
         free_temp.push_back(*it);
     }
     int i=0;
+    // Combine free memory frames into contiguous blocks of size equal to power of 2
     while(i<free_temp.size()){
         int j=i;
         while(j+1<free_temp.size() && (free_temp[j]==(free_temp[j+1]-1)) )
@@ -311,6 +413,7 @@ void make_buddy_list(){
         i=i+res;
     }
 
+    // Print out the buddy lists
     map<int,vector<vector<int> > >::iterator mit;
     for(mit=mp.begin();mit!=mp.end();mit++){
         vector<vector<int> >::iterator vt;
@@ -334,24 +437,29 @@ void make_buddy_list(){
 int main()
 {
 	FILE *file = fopen( "A0225404R-assign4-input.dat", "r" );
-	int arr[4400][2];
-	char arrc[4400];
+	int arr[5000][2];
+	char arrc[5000];
 	char buffer[40];
 	char temp[10];
 	int i =0;
 	int j =0;
 	int count =0;
 	if( !file ) {
-		puts("Error");
+		puts("File not present error. Reformat the file name as : A0225404R-assign4-input.dat");
 		return 0;
 	}
-	int inputLength =0;
+	// Counter for length of input
+	int inputLength = 0;
+	// Read from input file
 	while (!feof(file))
 	{
-		fgets(buffer, 40, file); //read line
-		arrc[inputLength]=buffer[0]; // get A/X/F
-		//arr1[count].operation = buffer[0];
-		////////GET <seqno>//////
+	    // Read line
+		fgets(buffer, 40, file);
+		// Get A/X/F
+		arrc[inputLength]=buffer[0];
+
+
+		// GET <seqno>
 		i =2;
 		j =0;
 		while(buffer[i]!='\t'){
@@ -361,10 +469,9 @@ int main()
 		}
 		temp[j]='\0';
 		arr[inputLength][0] = atoi(temp);
-		//arr1[count].seqno = atoi(temp);
-		//////////////////////////
 
-		////////GET <num>//////
+
+		// GET <num>
 		i++;
 		j=0;
 		while(buffer[i]!='\n'){
@@ -374,40 +481,48 @@ int main()
 		}
 		temp[j]='\0';
 		arr[inputLength][1] = atoi(temp);
-		//arr1[count].num = atoi(temp);
+
+		// Increment counter for input length
 		inputLength++;
 		//////////////////////////
 	}
+
+	// Close file
 	fclose(file);
+
+	// Initialize memory pool with 512 frames since memory size is 2MB
 	init(512);
+
+
 	for(i=0;i<inputLength;i++){
-		//printf("%c -> %d -> %d\n",arrc[i], arr[i][0], arr[i][1]);
-		//printf("%c -> %d -> %d\n",arr1[i].operation, arr1[i].seqno, arr1[i].num);
-		//sprintf("-----------\n");
+		// Processing for A <seqno> <num>
 		if(arrc[i]=='A'){
-		    //cout<<"A -> "<<"seqno : "<<arr[i][0]<<"  num : "<<arr[i][1]<<endl;
-            //print_free_memory();
             allocate_pages(arr[i][0],arr[i][1]);
 		}
+
+		// Processing for F <seqno> <num>
 		else if(arrc[i]=='F'){
-            //cout<<"F -> "<<"seqno : "<<arr[i][0]<<"  num : "<<arr[i][1]<<endl;
 			free_page(arr[i][0],arr[i][1]);
 		}
+
+		// Processing for X <seqno> <num>
 		else if(arrc[i]=='X'){
-		    //cout<<"X -> "<<"seqno : "<<arr[i][0]<<"  num : "<<arr[i][1]<<endl;
 			access_page(arr[i][0],arr[i][1]);
 		}
 	}
-    //view_memory();
-    cout<<"===================================="<<endl;
+    //view_memory_map();
+    cout<<"========================================================================"<<endl;
+    cout<<"Active list : \n================================"<<endl;
     print_active();
-    cout<<"===================================="<<endl;
+    cout<<"========================================================================"<<endl;
+    cout<<"Inactive list : \n================================"<<endl;
     print_inactive();
-    cout<<"===================================="<<endl;
-
+    cout<<"========================================================================"<<endl;
+    cout<<"Free frames : \n================================"<<endl;
     print_free_memory();
-    cout<<"===================================="<<endl;
-    cout<<"Status of buddy lists : "<<endl;
+    cout<<"========================================================================"<<endl;
+    cout<<"Status of buddy lists : \n================================"<<endl;
     make_buddy_list();
+    cout<<"========================================================================"<<endl;
 	return 0;
 }
