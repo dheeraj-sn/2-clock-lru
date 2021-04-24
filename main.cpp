@@ -148,7 +148,9 @@ void reclaim(int number_of_frames){
     // If required number of frames have not been reclaimed from the inactive list, start removing nodes from tail of active list
     // Keep removing frames till either the number of required frames have been reclaimed or the active list is empty
     while(number_of_frames!=0 && !active.empty()){
+        // Remove the tail node from active list. In my implementation it gets added to the head of inactive list which currently is empty
         remove_from_active();
+        // Inactive list currently has 1 node, which was added to it on removing from active list. We remove it from the inactive list now
         remove_from_inactive();
         number_of_frames--;
     }
@@ -288,37 +290,14 @@ void access_page(int seqno,int num){
 	// Flow will reach here if the frame is not present in either active or inactive list
 	// This means that frame has not been allocated for this "seqno, num" of it has been reclaimed
 	int allocated_frame_number = -1;
-	// Check if "seqno" is present int our hash_table
+	// Check if "seqno" is present in our hash_table
 	if(mem_map.find(seqno)==mem_map.end()){
         // If seqno is not present in hash_table then add a empty vector corresponding to seqno in hash_table
 		mem_map[seqno]=vector<pair<int,int> >();
-        // Allocate a frame for "seqno, num" and add to inactive list
-        allocated_frame_number = allocate_one_frame(seqno, num);
-        return;
 	}
-
-	// Check if frame is already allocated for "seqno, num"
-	bool found_in_seq=false;
-	for(int i=0;i<mem_map[seqno].size();i++){
-		if(mem_map[seqno][i].first == num){
-			allocated_frame_number = mem_map[seqno][i].second;
-			found_in_seq = true;
-			break;
-		}
-	}
-
-	// If frame is not allocated for "seqno, num" then allocate a new frame for it and add to inactive list
-	if(found_in_seq==false){
-        allocated_frame_number = allocate_one_frame(seqno, num);
-        return;
-	}
-	/*
-	lru_node newNode;
-    newNode.seqno = seqno;
-    newNode.num = num;
-    newNode.frame_number = allocated_frame_number;
-    add_to_inactive(newNode);
-    */
+    // Allocate a frame for "seqno, num" and add to inactive list
+    allocated_frame_number = allocate_one_frame(seqno, num);
+    return;
 }
 
 // Free the frame for "seqno, num"
