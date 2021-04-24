@@ -10,6 +10,7 @@
 #include<vector>
 #include<math.h>
 #include<set>
+#include<string>
 using namespace std;
 
 // structure for each LRU node
@@ -164,7 +165,7 @@ void init(int pages){
 }
 
 // Function to allocate "num" number of frames for sequence number "seqno"
-void allocate_pages(int seqno,int num){
+void allocate_frames(int seqno,int num){
     // Check if the "seqno" is already present in hash_table
 	if(mem_map.find(seqno)==mem_map.end()){
 		// If "seqno" is not present in hash_table, add a empty vector corresponding to "seqno" in hash_table
@@ -380,16 +381,27 @@ int power_two(int n)
 
 // Function to make buddy lists from free frames
 void make_buddy_list(){
+    // Data structure for storing buddy lists
     map<int,vector<vector<int> > >mp;
+    // Entry for storing blocks of size 1
     mp[1] = vector<vector<int> >();
+    // Entry for storing blocks of size 2
     mp[2] = vector<vector<int> >();
+    // Entry for storing blocks of size 4
     mp[4] = vector<vector<int> >();
+    // Entry for storing blocks of size 8
     mp[8] = vector<vector<int> >();
+    // Entry for storing blocks of size 16
     mp[16] = vector<vector<int> >();
+    // Entry for storing blocks of size 32
     mp[32] = vector<vector<int> >();
+    // Entry for storing blocks of size 64
     mp[64] = vector<vector<int> >();
+    // Entry for storing blocks of size 128
     mp[128] = vector<vector<int> >();
+    // Entry for storing blocks of size 256
     mp[256] = vector<vector<int> >();
+    // Entry for storing blocks of size 512
     mp[512] = vector<vector<int> >();
     vector<int>free_temp;
     set<int>::iterator it;
@@ -402,14 +414,20 @@ void make_buddy_list(){
     // Combine free memory frames into contiguous blocks of size equal to power of 2
     while(i<free_temp.size()){
         int j=i;
+        // Checking the number of free frames which are contiguous starting from index i in the list of free frames
         while(j+1<free_temp.size() && (free_temp[j]==(free_temp[j+1]-1)) )
             j++;
+        // There are (j - i + 1) free frames which are contiguous.
+        // Get the power of 2 which is just less than or equal to (j-i+1) and store it in variable "res"
         int res = power_two(j-i+1);
+        // Store contiguous frames from index i to index (i+res) in a temporary vector
         vector<int>temp;
         for(int k=i;k<i+res;k++){
             temp.push_back(free_temp[k]);
         }
+        // Store the obtained block in map entry with index "res" i.e. size of the block which is power of 2
         mp[temp.size()].push_back(temp);
+        // Increment i to i+res, to check for next contiguous block
         i=i+res;
     }
 
@@ -455,6 +473,7 @@ int main()
 	{
 	    // Read line
 		fgets(buffer, 40, file);
+		//cout<<buffer<<endl;
 		// Get A/X/F
 		arrc[inputLength]=buffer[0];
 
@@ -497,7 +516,7 @@ int main()
 	for(i=0;i<inputLength;i++){
 		// Processing for A <seqno> <num>
 		if(arrc[i]=='A'){
-            allocate_pages(arr[i][0],arr[i][1]);
+            allocate_frames(arr[i][0],arr[i][1]);
 		}
 
 		// Processing for F <seqno> <num>
@@ -513,15 +532,18 @@ int main()
     //view_memory_map();
     cout<<"========================================================================"<<endl;
     cout<<"Active list : \n================================"<<endl;
+    cout<<"Printing format : {seqno, num, frame_number}"<<endl;
     print_active();
     cout<<"========================================================================"<<endl;
     cout<<"Inactive list : \n================================"<<endl;
+    cout<<"Printing format : {seqno, num, frame_number}"<<endl;
     print_inactive();
     cout<<"========================================================================"<<endl;
     cout<<"Free frames : \n================================"<<endl;
     print_free_memory();
     cout<<"========================================================================"<<endl;
     cout<<"Status of buddy lists : \n================================"<<endl;
+    cout<<"Block size : {frames in 1st block} {frames in 2nd block} ..."<<endl;
     make_buddy_list();
     cout<<"========================================================================"<<endl;
 	return 0;
