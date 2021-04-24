@@ -549,7 +549,7 @@ int main()
     cout<<"Free frames : \n================================"<<endl;
     print_free_memory();
     cout<<"========================================================================"<<endl;
-    cout<<"Number of frames in actives list  : "<<active.size()<<endl;
+    cout<<"Number of frames in active list  : "<<active.size()<<endl;
     cout<<"Number of frames in inactive list : "<<inactive.size()<<endl;
     cout<<"Number of frames in the free pool : "<<free_memory.size()<<endl;
     cout<<"========================================================================"<<endl;
