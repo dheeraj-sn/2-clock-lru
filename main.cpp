@@ -326,7 +326,7 @@ void free_page(int seqno, int num){
 	bool found = false;
 	// Check if seqno is present in hash_table
 	if(mem_map.find(seqno)==mem_map.end()){
-		// If seqno is not present in hash_table then there are no frame allocated corresponding to it, so return
+		// If seqno is not present in hash_table then there is no frame allocated corresponding to it, so return
 		return;
 	}
 
@@ -461,7 +461,6 @@ int main()
 	char temp[10];
 	int i =0;
 	int j =0;
-	int count =0;
 	if( !file ) {
 		puts("File not present error. Reformat the file name as : A0225404R-assign4-input.dat");
 		return 0;
@@ -533,17 +532,29 @@ int main()
     cout<<"========================================================================"<<endl;
     cout<<"Active list : \n================================"<<endl;
     cout<<"Printing format : {seqno, num, frame_number}"<<endl;
+    cout<<"Active list HEAD ================================"<<endl;
     print_active();
+    cout<<"Active list TAIL ================================"<<endl;
+    cout<<"========================================================================"<<endl;
+    cout<<"========================================================================"<<endl;
     cout<<"========================================================================"<<endl;
     cout<<"Inactive list : \n================================"<<endl;
     cout<<"Printing format : {seqno, num, frame_number}"<<endl;
+    cout<<"Inactive list HEAD ================================"<<endl;
     print_inactive();
+    cout<<"Inactive list TAIL ================================"<<endl;
+    cout<<"========================================================================"<<endl;
+    cout<<"========================================================================"<<endl;
     cout<<"========================================================================"<<endl;
     cout<<"Free frames : \n================================"<<endl;
     print_free_memory();
     cout<<"========================================================================"<<endl;
+    cout<<"Number of frames in actives list  : "<<active.size()<<endl;
+    cout<<"Number of frames in inactive list : "<<inactive.size()<<endl;
+    cout<<"Number of frames in the free pool : "<<free_memory.size()<<endl;
+    cout<<"========================================================================"<<endl;
     cout<<"Status of buddy lists : \n================================"<<endl;
-    cout<<"Block size : {frames in 1st block} {frames in 2nd block} ..."<<endl;
+    cout<<"Block size -> {frames in 1st block} {frames in 2nd block} ..."<<endl;
     make_buddy_list();
     cout<<"========================================================================"<<endl;
 	return 0;
